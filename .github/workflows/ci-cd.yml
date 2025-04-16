@@ -1,43 +1,44 @@
-name: CI/CD for Chrome Extension
+# .github/workflows/bandit-scan.yml
+
+name: Security Scan with Bandit
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  build-and-lint:
+  security:
+    name: Run Bandit Security Scan
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      - name: Install Dependencies
-        run: |
-          npm install
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit
 
-      - name: Lint Code
-        run: |
-          npm run lint
+    - name: Run Bandit Scan
+      run: |
+        bandit -r . -f json -o bandit_output.json
+        bandit -r . -ll --exit-zero
 
-  package-extension:
-    needs: build-and-lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-
-      - name: Create ZIP Package
-        run: |
-          zip -r extension.zip . -x "*.git*" "*.github*"
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: extension-package
-          path: extension.zip
+    - name: Check for Vulnerabilities
+      run: |
+        issues=$(bandit -r . --quiet | grep -i ">> Issue")
+        if [[ ! -z "$issues" ]]; then
+          echo "❌ Vulnerabilities found!"
+          echo "$issues"
+          exit 1
+        else
+          echo "✅ No vulnerabilities found."
+        fi
