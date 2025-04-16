@@ -1,5 +1,3 @@
-# .github/workflows/bandit-scan.yml
-
 name: Security Scan with Bandit
 
 on:
